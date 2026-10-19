@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Power BI Marketing & Lead Funnel Dashboard - Bank Campaign Analysis</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-blue: #38bdf8;
+      --accent-green: #4ade80;
+      --accent-amber: #fbbf24;
+      --accent-rose: #f43f5e;
+      --accent-purple: #c084fc;
+      --stage1: #3b82f6;
+      --stage2: #06b6d4;
+      --stage3: #10b981;
+      --stage4: #f59e0b;
+      --stage5: #ec4899;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; }
+    body { background-color: var(--bg); color: var(--text-main); padding: 24px; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--card-border); }
+    .header h1 { font-size: 24px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 10px; }
+    .badge { background: #0284c7; color: #fff; font-size: 12px; padding: 4px 10px; border-radius: 9999px; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
+    .subtitle { font-size: 14px; color: var(--text-muted); margin-top: 4px; }
+    
+    /* KPI Ribbon */
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .kpi-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 18px; position: relative; overflow: hidden; }
+    .kpi-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+    .kpi-card.blue::before { background: var(--accent-blue); }
+    .kpi-card.green::before { background: var(--accent-green); }
+    .kpi-card.amber::before { background: var(--accent-amber); }
+    .kpi-card.rose::before { background: var(--accent-rose); }
+    .kpi-card.purple::before { background: var(--accent-purple); }
+    .kpi-title { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .kpi-val { font-size: 28px; font-weight: 800; margin: 8px 0 4px 0; color: #fff; }
+    .kpi-sub { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
+    .kpi-sub.up { color: var(--accent-green); }
+    .kpi-sub.down { color: var(--accent-rose); }
+
+    /* Layout Grids */
+    .grid-2 { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; margin-bottom: 24px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 24px; }
+    @media (max-width: 1024px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+    .panel { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 20px; }
+    .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .panel-title { font-size: 16px; font-weight: 700; color: #fff; }
+    .panel-desc { font-size: 12px; color: var(--text-muted); }
+
+    /* Funnel Visual Custom */
+    .funnel-container { display: flex; flex-direction: column; gap: 12px; }
+    .funnel-row { display: grid; grid-template-columns: 180px 1fr 140px; align-items: center; gap: 16px; }
+    .stage-label { font-size: 13px; font-weight: 600; color: #e2e8f0; }
+    .stage-sub { font-size: 11px; color: var(--text-muted); }
+    .funnel-bar-wrapper { background: #334155; border-radius: 8px; height: 38px; position: relative; overflow: hidden; display: flex; align-items: center; }
+    .funnel-bar-fill { height: 100%; border-radius: 8px; transition: width 0.6s ease; display: flex; align-items: center; padding-left: 12px; font-weight: 700; font-size: 13px; color: #fff; }
+    .funnel-metrics { text-align: right; }
+    .stage-volume { font-size: 15px; font-weight: 700; color: #fff; }
+    .stage-rate { font-size: 12px; color: var(--accent-green); font-weight: 600; }
+    .dropoff-tag { font-size: 11px; color: var(--accent-rose); font-weight: 500; }
+
+    /* Channel Cards */
+    .channel-box { display: flex; flex-direction: column; gap: 12px; }
+    .channel-item { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 14px; }
+    .channel-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .ch-name { font-size: 14px; font-weight: 700; }
+    .ch-rate { font-size: 16px; font-weight: 800; }
+    .ch-bar-bg { background: #1e293b; height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
+    .ch-bar-fg { height: 100%; border-radius: 4px; }
+    .ch-stats { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); }
+
+    /* Insights Box */
+    .insight-card { background: #1e293b; border-left: 4px solid var(--accent-blue); padding: 14px 16px; border-radius: 0 8px 8px 0; margin-bottom: 12px; font-size: 13px; line-height: 1.5; }
+    .insight-card strong { color: var(--accent-blue); }
+    .insight-card.warning { border-left-color: var(--accent-amber); }
+    .insight-card.warning strong { color: var(--accent-amber); }
+    .insight-card.success { border-left-color: var(--accent-green); }
+    .insight-card.success strong { color: var(--accent-green); }
+    .insight-card.danger { border-left-color: var(--accent-rose); }
+    .insight-card.danger strong { color: var(--accent-rose); }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 10px; color: var(--text-muted); border-bottom: 1px solid var(--card-border); font-weight: 600; font-size: 11px; text-transform: uppercase; }
+    td { padding: 10px; border-bottom: 1px solid #273549; }
+    tr:hover td { background-color: #243247; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <h1>Power BI Marketing & Lead Funnel Dashboard <span class="badge">Production Model</span></h1>
+      <div class="subtitle">UCI Bank Marketing Dataset (41,188 Target Outreach Records | 2008 - 2010 Campaign Cycles)</div>
+    </div>
+    <div>
+      <span style="font-size: 13px; color: var(--text-muted); background: #1e293b; padding: 8px 14px; border-radius: 8px; border: 1px solid #334155;">
+        ⚡ Ready for Power BI Desktop
+      </span>
+    </div>
+  </div>
+
+  <!-- KPI Ribbon -->
+  <div class="kpi-grid">
+    <div class="kpi-card blue">
+      <div class="kpi-title">Total Outreach (Traffic)</div>
+      <div class="kpi-val">41,188</div>
+      <div class="kpi-sub">Stage 1: Campaign Pool (100%)</div>
+    </div>
+    <div class="kpi-card purple">
+      <div class="kpi-title">Connected Leads (≥60s)</div>
+      <div class="kpi-val">37,007</div>
+      <div class="kpi-sub up">89.85% Connect Rate (-10.1% Drop)</div>
+    </div>
+    <div class="kpi-card amber">
+      <div class="kpi-title">Engaged Pitches (≥180s)</div>
+      <div class="kpi-val">21,158</div>
+      <div class="kpi-sub down">57.17% Retention (42.8% Drop)</div>
+    </div>
+    <div class="kpi-card rose">
+      <div class="kpi-title">Qualified Opportunities</div>
+      <div class="kpi-val">12,759</div>
+      <div class="kpi-sub down">60.30% Retention (39.7% Drop)</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-title">Converted Customers</div>
+      <div class="kpi-val">4,640</div>
+      <div class="kpi-sub up">11.27% Overall Conversion Rate</div>
+    </div>
+  </div>
+
+  <!-- Main Funnel Grid -->
+  <div class="grid-2">
+    <!-- Visual Funnel Breakdown -->
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">End-to-End Funnel Progression & Leakage</div>
+          <div class="panel-desc">Stage-to-stage retention, volume attrition, and drop-off leakage</div>
+        </div>
+      </div>
+
+      <div class="funnel-container">
+        <!-- Stage 1 -->
+        <div class="funnel-row">
+          <div>
+            <div class="stage-label">1. Outreach / Targeted</div>
+            <div class="stage-sub">Top of Funnel (TOFU)</div>
+          </div>
+          <div class="funnel-bar-wrapper">
+            <div class="funnel-bar-fill" style="width: 100%; background: var(--stage1);">41,188 (100.0%)</div>
+          </div>
+          <div class="funnel-metrics">
+            <div class="stage-volume">41,188</div>
+            <div class="stage-rate">Base (100%)</div>
+          </div>
+        </div>
+
+        <!-- Stage 2 -->
+        <div class="funnel-row">
+          <div>
+            <div class="stage-label">2. Connected Leads</div>
+            <div class="stage-sub">Call Duration ≥ 60s</div>
+          </div>
+          <div class="funnel-bar-wrapper">
+            <div class="funnel-bar-fill" style="width: 89.85%; background: var(--stage2);">37,007 (89.8%)</div>
+          </div>
+          <div class="funnel-metrics">
+            <div class="stage-volume">37,007</div>
+            <div class="dropoff-tag">-4,181 Drop (10.2%)</div>
+          </div>
+        </div>
+
+        <!-- Stage 3 -->
+        <div class="funnel-row">
+          <div>
+            <div class="stage-label">3. Engaged Pitch</div>
+            <div class="stage-sub">Call Duration ≥ 180s</div>
+          </div>
+          <div class="funnel-bar-wrapper">
+            <div class="funnel-bar-fill" style="width: 51.37%; background: var(--stage3);">21,158 (51.4%)</div>
+          </div>
+          <div class="funnel-metrics">
+            <div class="stage-volume">21,158</div>
+            <div class="dropoff-tag">-15,849 Drop (42.8%)</div>
+          </div>
+        </div>
+
+        <!-- Stage 4 -->
+        <div class="funnel-row">
+          <div>
+            <div class="stage-label">4. Opportunity</div>
+            <div class="stage-sub">Deep Deliberation ≥ 300s</div>
+          </div>
+          <div class="funnel-bar-wrapper">
+            <div class="funnel-bar-fill" style="width: 30.98%; background: var(--stage4);">12,759 (31.0%)</div>
+          </div>
+          <div class="funnel-metrics">
+            <div class="stage-volume">12,759</div>
+            <div class="dropoff-tag">-8,399 Drop (39.7%)</div>
+          </div>
+        </div>
+
+        <!-- Stage 5 -->
+        <div class="funnel-row">
+          <div>
+            <div class="stage-label">5. Converted Customer</div>
+            <div class="stage-sub">Subscribed Term Deposit</div>
+          </div>
+          <div class="funnel-bar-wrapper">
+            <div class="funnel-bar-fill" style="width: 11.27%; background: var(--stage5);">4,640 (11.3%)</div>
+          </div>
+          <div class="funnel-metrics">
+            <div class="stage-volume">4,640</div>
+            <div class="dropoff-tag">-8,119 Drop (63.6%)</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 20px; padding: 14px; background: #0f172a; border-radius: 8px; border: 1px dashed #334155;">
+        <div style="font-size: 12px; color: var(--accent-amber); font-weight: 700; margin-bottom: 4px;">⚠️ Primary Funnel Leakage Points:</div>
+        <div style="font-size: 12px; color: var(--text-muted); line-height: 1.4;">
+          <strong>Stage 2 → 3:</strong> 15,849 leads (42.8%) lost during initial value pitch (seconds 60–180).<br>
+          <strong>Stage 4 → 5:</strong> 8,119 opportunities (63.6%) lost during final closing negotiations (>300s).
+        </div>
+      </div>
+    </div>
+
+    <!-- Channel Performance Diagnostics -->
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Channel Performance & Lead Quality</div>
+          <div class="panel-desc">Comparing Mobile Cellular vs Fixed Wireline</div>
+        </div>
+      </div>
+
+      <div class="channel-box">
+        <div class="channel-item">
+          <div class="channel-top">
+            <span class="ch-name" style="color: var(--accent-blue);">📱 Cellular (Direct Mobile)</span>
+            <span class="ch-rate" style="color: var(--accent-green);">14.74% Conv Rate</span>
+          </div>
+          <div class="ch-bar-bg">
+            <div class="ch-bar-fg" style="width: 14.74%; background: var(--accent-green);"></div>
+          </div>
+          <div class="ch-stats">
+            <span>Outreach: <strong>26,144</strong></span>
+            <span>Customers Won: <strong>3,853</strong></span>
+            <span>Close Rate (S4→S5): <strong>44.2%</strong></span>
+          </div>
+        </div>
+
+        <div class="channel-item">
+          <div class="channel-top">
+            <span class="ch-name" style="color: var(--accent-rose);">☎️ Telephone (Fixed Landline)</span>
+            <span class="ch-rate" style="color: var(--accent-rose);">5.23% Conv Rate</span>
+          </div>
+          <div class="ch-bar-bg">
+            <div class="ch-bar-fg" style="width: 5.23%; background: var(--accent-rose);"></div>
+          </div>
+          <div class="ch-stats">
+            <span>Outreach: <strong>15,044</strong></span>
+            <span>Customers Won: <strong>787</strong></span>
+            <span>Close Rate (S4→S5): <strong>19.5%</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 16px;">
+        <div class="panel-title" style="font-size: 14px; margin-bottom: 10px;">Lead Warmth & Prior Engagement</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Prior Touch (Poutcome)</th>
+              <th>Outreach</th>
+              <th>Won</th>
+              <th>Conversion Rate</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span style="color: var(--accent-green); font-weight: 700;">Prior Success</span></td>
+              <td>1,373</td>
+              <td>894</td>
+              <td><strong style="color: var(--accent-green);">65.11%</strong></td>
+            </tr>
+            <tr>
+              <td><span style="color: var(--accent-amber);">Prior Failure</span></td>
+              <td>4,252</td>
+              <td>605</td>
+              <td>14.23%</td>
+            </tr>
+            <tr>
+              <td><span style="color: var(--text-muted);">Cold (Nonexistent)</span></td>
+              <td>35,563</td>
+              <td>3,141</td>
+              <td>8.83%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 2: Touchpoint Fatigue & Audience Segments -->
+  <div class="grid-2">
+    <!-- Touchpoint Fatigue Chart -->
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Touchpoint Diminishing Returns (Call Fatigue)</div>
+          <div class="panel-desc">Conversion rate drops precipitously after 3 contact attempts</div>
+        </div>
+      </div>
+      <div style="height: 220px;">
+        <canvas id="touchesChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Audience Segment Matrix -->
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">High-Yield vs Low-Yield Customer Personas</div>
+          <div class="panel-desc">Targeting mismatch between outreach volume and conversion yield</div>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Job Persona</th>
+            <th>Total Outreach</th>
+            <th>Won Customers</th>
+            <th>Conversion Rate</th>
+            <th>Yield Index</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Student</strong></td>
+            <td>875</td>
+            <td>275</td>
+            <td><strong style="color: var(--accent-green);">31.43%</strong></td>
+            <td><span class="badge" style="background:#059669;">2.8x Average</span></td>
+          </tr>
+          <tr>
+            <td><strong>Retired / Senior</strong></td>
+            <td>1,720</td>
+            <td>434</td>
+            <td><strong style="color: var(--accent-green);">25.23%</strong></td>
+            <td><span class="badge" style="background:#059669;">2.2x Average</span></td>
+          </tr>
+          <tr>
+            <td><strong>Admin / Clerical</strong></td>
+            <td>10,422</td>
+            <td>1,352</td>
+            <td>12.97%</td>
+            <td><span class="badge" style="background:#2563eb;">1.2x Average</span></td>
+          </tr>
+          <tr>
+            <td><strong>Management</strong></td>
+            <td>2,924</td>
+            <td>328</td>
+            <td>11.22%</td>
+            <td><span class="badge" style="background:#475569;">1.0x Average</span></td>
+          </tr>
+          <tr>
+            <td><strong>Blue-Collar</strong></td>
+            <td>9,254</td>
+            <td>638</td>
+            <td><strong style="color: var(--accent-rose);">6.89%</strong></td>
+            <td><span class="badge" style="background:#dc2626;">0.6x Average</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Row 3: Actionable Business Recommendations -->
+  <div class="panel" style="margin-bottom: 24px;">
+    <div class="panel-header">
+      <div>
+        <div class="panel-title">Strategic Growth & Optimization Playbook for Sales & Marketing Teams</div>
+        <div class="panel-desc">Direct solutions addressing the 4 core business questions</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div>
+        <div class="insight-card danger">
+          <strong>1. Fix Funnel Drop-off at Stage 2→3 (The 60–180s Hook Failure):</strong><br>
+          42.8% of connected prospects hang up in minutes 1–3. Reps are delivering monologue pitches. Replace standard compliance scripts with a "Problem-Benefit-Proof" 30-second conversational opening.
+        </div>
+        <div class="insight-card warning">
+          <strong>2. Eliminate Closing Friction at Stage 4→5 (The Final Mile Drop):</strong><br>
+          63.6% of leads who deliberate for >5 minutes fail to close. Shift from verbal closing over the phone to instant digital closing (SMS one-click link or mobile banking push authorization).
+        </div>
+      </div>
+      <div>
+        <div class="insight-card success">
+          <strong>3. Reallocate 100% of Landline Outbound to Cellular (+1,430 Won Customers):</strong><br>
+          Landline conversion is an anemic 5.2% vs Mobile 14.7%. Reallocating telephone call volume to mobile channels yields +1,430 incremental customers (+30.8% revenue lift) at zero additional call volume.
+        </div>
+        <div class="insight-card">
+          <strong>4. Implement a Strict 3-Touch Outreach Cap (Reclaim 3,385 Wasted Hours):</strong><br>
+          Touches 4 through 11+ represent 7,635 repetitive calls yielding only 3.1% to 8.6% conversion. Capping outreach at 3 touches and reallocating capacity to fresh leads recaptures hundreds of SDR hours.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Touches Chart
+    const ctx = document.getElementById('touchesChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: ['1 Touch', '2 Touches', '3 Touches', '4-5 Touches', '6-10 Touches', '11+ Touches'],
+        datasets: [{
+          label: 'Conversion Rate (%)',
+          data: [13.04, 11.46, 10.75, 8.68, 6.32, 3.11],
+          borderColor: '#f59e0b',
+          backgroundColor: 'rgba(245, 158, 11, 0.1)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 6,
+          pointBackgroundColor: '#f59e0b'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          y: {
+            min: 0,
+            max: 16,
+            ticks: { color: '#94a3b8', callback: v => v + '%' },
+            grid: { color: '#334155' }
+          },
+          x: {
+            ticks: { color: '#94a3b8' },
+            grid: { color: 'transparent' }
+          }
+        }
+      }
+    });
+  </script>
+</body>
+</html>
